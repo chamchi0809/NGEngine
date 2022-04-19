@@ -21,7 +21,7 @@ export default class SampleScene extends GameScene{
   sword:GameObject;
   swordLink:ObjectLink
   isMovingLeft:boolean;
-  isMovingRight:boolean;  
+  isMovingRight:boolean;
 
   constructor(){
     super();    
@@ -42,20 +42,34 @@ export default class SampleScene extends GameScene{
     this.gameEngine.SpawnObject(this.player);
   }
   SpawnSword(){
-    
+    let swordImage = new Image();
+    swordImage.src = Sword;
+    this.sword = this.gameEngine.SpawnObject(
+      new GameObject(new Vector2(80,80), new Vector2(332,78).Divide(3))
+      .AttatchImage(swordImage)
+      .AttatchRigidbody()
+      );
   }
 
   Start(){    
     this.SpawnPlayer();
+    this.SpawnSword();
 
     Renderer.bgcolor = '#999999';
-    let ground = new GameObject(new Vector2(0,-320),new Vector2(1280,400),'green');
-    ground.AttatchRigidbody(true);
-    this.gameEngine.SpawnObject(ground);
+    this.gameEngine.SpawnObject(
+      new GameObject(new Vector2(0,-320), new Vector2(1280,400),'green')
+      .AttatchRigidbody(true)
+    );
   }
   
   Update(deltaTime:number){
-    
+    if(this.isMovingLeft){
+      this.player.AddForce(new Vector2(-.02,0));
+    }
+    if(this.isMovingRight){
+      this.player.AddForce(new Vector2(.02,0));
+    }
+    this.player.rotation = 0;
   }
 
   OnCollisionEnter(event: IPair): void {    
@@ -64,11 +78,21 @@ export default class SampleScene extends GameScene{
 
 
   OnKeyDown(event: KeyboardEvent): void {
-    
+    if(event.code === 'KeyA'){
+      this.isMovingLeft = true;
+    }
+    if(event.code === 'KeyD'){
+      this.isMovingRight = true;
+    }
   }  
 
   OnKeyUp(event: KeyboardEvent): void {
-
+    if(event.code === 'KeyA'){
+      this.isMovingLeft = false;
+    }
+    if(event.code === 'KeyD'){
+      this.isMovingRight = false;
+    }
   }
 
 

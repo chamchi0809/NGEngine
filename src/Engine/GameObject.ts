@@ -110,28 +110,32 @@ export class GameObject{
     this.color=color;    
   }
 
-  public AttatchImage(sprite:CanvasImageSource|HTMLElement|Element|HTMLImageElement){
+  public AttatchImage(sprite:CanvasImageSource|HTMLElement|Element|HTMLImageElement):GameObject{
     this.sprite = sprite as CanvasImageSource;
+    return this;
   }
 
-  public AttatchText(text:string, font?:string, textBaseline?:CanvasTextBaseline, textAlign?:CanvasTextAlign){
+  public AttatchText(text:string, font?:string, textBaseline?:CanvasTextBaseline, textAlign?:CanvasTextAlign):GameObject{
     this.text = text;
     this.font = font;
     this.textBaseline=textBaseline;
     this.textAlign = textAlign;
+    return this;
   }
 
-  public AttacthDecoration(decoration:ObjectDecoration){
+  public AttacthDecoration(decoration:ObjectDecoration):GameObject{
     this.decorations.push(decoration);
+    return this;
   }
 
   public CheckRigidbody():boolean{
     return typeof this.rigidBody !== 'undefined';
   }
 
-  public AttatchRigidbody(isStatic=false){        
+  public AttatchRigidbody(isStatic=false):GameObject{        
     this.rigidBody = Bodies.rectangle(this._position.x, this._position.y, this.size.x, this.size.y,{isStatic:isStatic});
-    Composite.add(GameEngine.physicsEngine.world, this.rigidBody);    
+    Composite.add(GameEngine.physicsEngine.world, this.rigidBody); 
+    return this;   
   }
   public RemoveRigidbody(){
     Composite.remove(GameEngine.physicsEngine.world,this.rigidBody);

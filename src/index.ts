@@ -1,5 +1,5 @@
 import { GameEngine } from './Engine/GameEngine';
+import SampleScene from 'Game/SampleScene';
 
 
-console.log('asdf');
-new GameEngine();
+new GameEngine(new SampleScene());

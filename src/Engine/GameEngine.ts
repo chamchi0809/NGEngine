@@ -12,14 +12,14 @@ export class GameEngine{
   public gameObjects:Array<GameObject>;
   static physicsEngine:Engine;     
 
-  constructor(){
+  constructor(scene:GameScene){
     new Renderer();  
     new Camera();
-    this.gameObjects = new Array();
+    this.gameObjects = new Array();    
 
     GameEngine.physicsEngine=Engine.create();   
     GameEngine.physicsEngine.world.gravity.y=-1;
-    this.InitScene(new SampleScene());
+    this.InitScene(scene);
     this.Start();
   }
 
