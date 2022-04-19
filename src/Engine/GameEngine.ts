@@ -104,8 +104,7 @@ export class GameEngine{
   static SortObjects():void{
     GameEngine.gameObjects.sort((a,b)=>{
       return a.sortingOrder - b.sortingOrder;
-    })
-    console.log([...GameEngine.gameObjects]);
+    })    
   }
   static GetDefaultCollisionLayer(){
     return 0x0001;
