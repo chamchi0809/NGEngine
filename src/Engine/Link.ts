@@ -1,6 +1,7 @@
-import { Body, Constraint, Vector } from 'matter-js';
+import { Body, Constraint, Vector, Composite } from 'matter-js';
 import { GameObject } from './GameObject';
 import { Vector2 } from './Transformation';
+import { GameEngine } from './GameEngine';
 
 export class ObjectLink{  
   public link:Constraint;
@@ -41,9 +42,10 @@ export class ObjectLink{
     this.link.pointB = Vector.create(value.x, value.y);
   }
 
-  constructor(length:number, elasticity:number    )
+  constructor(length:number, elasticity:number)
   {    
-    this.link = Constraint.create({length:length,stiffness:elasticity});    
+    this.link = Constraint.create({length:length,stiffness:elasticity,pointA:{x:0,y:0},bodyB:new GameObject(new Vector2(0,0), new Vector2(0,0)).AttatchRigidbody(true).rigidBody});    
+    Composite.add(GameEngine.physicsEngine.world,this.link);
     this.link.pointA = Vector.create(0,0);        
   }
 }
