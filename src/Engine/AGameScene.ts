@@ -3,9 +3,7 @@ import { GameEngine } from './GameEngine';
 import Renderer from './Renderer';
 
 export abstract class GameScene{
-
-  gameEngine:GameEngine;
-  renderer:Renderer;
+    
     
 
   constructor(){

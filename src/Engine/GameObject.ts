@@ -15,8 +15,8 @@ interface ObjectDecoration{
 }
 
 export class GameObject{
-  
-  private _position:Vector2;
+  //#region properties
+  private _position:Vector2;  
   public get position():Vector2{
     if(typeof this.rigidBody!=='undefined'){
       return new Vector2(this.rigidBody.position.x,this.rigidBody.position.y);
@@ -93,8 +93,43 @@ export class GameObject{
     }
     return Infinity;
   }
+  public get collisionLayer():number{
+    return this.rigidBody?.collisionFilter.category;
+  }
+  public set collisionLayer(value:number){
+    if(this.rigidBody){
+      this.rigidBody.collisionFilter.category = value;
+    }
+  }
+  public get collisionMask():number{
+    return this.rigidBody?.collisionFilter.mask;
+  }
+  public set collisionMask(value:number){
+    if(this.rigidBody){
+      this.rigidBody.collisionFilter.mask = value;
+    }
+  }
+  public get friction():number{
+    return this.rigidBody?.friction;
+  }
+  public set friction(value:number){
+    if(this.rigidBody){
+      this.rigidBody.friction=value;
+    }
+  }
+  public get frictionAir():number{
+    return this.rigidBody?.frictionAir;
+  }
+  public set frictionAir(value:number){
+    if(this.rigidBody){
+      this.rigidBody.frictionAir=value;
+    }
+  }
+  public isCircle:boolean;
   public size:Vector2;
   public sprite:CanvasImageSource;
+  public flipX:boolean;
+  public flipY:boolean;
   public text:string='';
   public decorations:Array<ObjectDecoration>=new Array<ObjectDecoration>(0);
   public color:string;  
@@ -103,12 +138,18 @@ export class GameObject{
   public textAlign:CanvasTextAlign='center';
   public sortingOrder:number=0;
   public rigidBody:Body;  
-
+  public alpha:number=1;
+  
+  //#endregion
+  
   constructor(position:Vector2, size:Vector2, color:string='white'){
     this._position = position;
     this.size = size;    
     this.color=color;    
+    this.alpha=1;
   }
+
+  
 
   public AttatchImage(sprite:CanvasImageSource|HTMLElement|Element|HTMLImageElement):GameObject{
     this.sprite = sprite as CanvasImageSource;
@@ -132,8 +173,15 @@ export class GameObject{
     return typeof this.rigidBody !== 'undefined';
   }
 
-  public AttatchRigidbody(isStatic=false):GameObject{        
-    this.rigidBody = Bodies.rectangle(this._position.x, this._position.y, this.size.x, this.size.y,{isStatic:isStatic});
+  public AttatchRigidbody(isStatic=false,isTrigger=false,collisionLayer=1,collisionMask=~1|1):GameObject{        
+    this.rigidBody = Bodies.rectangle(
+      this._position.x, this._position.y, 
+      this.size.x, this.size.y,
+      {
+        isStatic:isStatic,
+        collisionFilter:{category:collisionLayer,mask:collisionMask},
+        isSensor:isTrigger,
+      });
     Composite.add(GameEngine.physicsEngine.world, this.rigidBody); 
     return this;   
   }
@@ -154,7 +202,7 @@ export class GameObject{
     this.rigidBody.torque = angle*DegToRad;
   }
 
-  public UpdatePhysics(){
+  public Update(deltaTime:number){
     
     if(typeof this.rigidBody !=='undefined'){
       var pos = this.rigidBody.position;
@@ -166,8 +214,15 @@ export class GameObject{
 
   public Render(context:CanvasRenderingContext2D, screenWidth:number, screenHeight:number):void{    
     context.save();
+    context.globalAlpha=this.alpha;
     context.translate(this._position.x, screenHeight-this._position.y);
     context.rotate(-(Math.PI/180)*this.rotation);
+    if(this.flipX){
+      context.scale(-1,1);
+    }
+    if(this.flipY){
+      context.scale(1,-1);
+    }
     context.translate(-this._position.x, -screenHeight+this._position.y);
     context.fillStyle=this.color;      
     if(this.sprite){
@@ -183,7 +238,13 @@ export class GameObject{
       context.fillText(this.text, this._position.x-textMetrics.width/2, screenHeight-this._position.y+textHeight/2,this.size.x);
     }
     else{
-      context.fillRect(this._position.x-this.size.x/2, screenHeight-this._position.y-this.size.y/2, this.size.x, this.size.y);    
+      if(this.isCircle){
+        context.beginPath();
+        context.arc(this._position.x, this._position.y, this.size.x, 0, Math.PI*2, false);        
+        context.fill();
+      }else{
+        context.fillRect(this._position.x-this.size.x/2, screenHeight-this._position.y-this.size.y/2, this.size.x, this.size.y);
+      }
     }
 
     this.decorations.forEach((el)=>{
@@ -200,6 +261,8 @@ export class GameObject{
 
     context.restore();    
   }
+
+  
 
   public CollideWith(other:GameObject, colType:CollisionType):boolean{
     switch(colType){

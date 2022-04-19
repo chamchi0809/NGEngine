@@ -2,11 +2,15 @@ class Vector2{
   public x:number;
   public y:number;
 
-  static up:Vector2 = new Vector2(0,1);
-  static down:Vector2 = new Vector2(0,-1);
-  static left:Vector2 = new Vector2(-1,0);
-  static right:Vector2 = new Vector2(1,0);
-  static zero:Vector2 = new Vector2(0,0);
+  static get up():Vector2 {return new Vector2(0,1);}
+  static get down():Vector2 {return new Vector2(0,-1);}
+  static get left():Vector2{return new Vector2(-1,0);}
+  static get right():Vector2{
+    return new Vector2(1,0);  
+  }
+  static get zero():Vector2{
+    return new Vector2(0,0)
+  }
 
   constructor(x:number, y:number){
     this.x = x;
@@ -34,7 +38,8 @@ class Vector2{
   }
 
   public Normalize():Vector2{
-    return this.Divide(this.Magnitude());
+    const val = this.Divide(this.Magnitude());    
+    return Number.isNaN(val.x)?Vector2.zero:val;
   }
 
   public Dot(p:Vector2):number{
@@ -52,6 +57,10 @@ class Vector2{
 
   static Clone(p:Vector2){
     return new Vector2(p.x, p.y);
+  }
+
+  public Equals(p:Vector2){
+    return this.x==p.x&&this.y==p.y;
   }
 }
 

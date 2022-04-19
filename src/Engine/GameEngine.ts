@@ -9,13 +9,13 @@ import { DegToRad, RadToDeg } from './Transformation';
 export class GameEngine{
   private gameScene: GameScene;  
   private interval: number;
-  public gameObjects:Array<GameObject>;
-  static physicsEngine:Engine;     
+  static gameObjects:Array<GameObject>;
+  static physicsEngine:Engine;
 
   constructor(scene:GameScene){
     new Renderer();  
     new Camera();
-    this.gameObjects = new Array();    
+    GameEngine.gameObjects = new Array();    
 
     GameEngine.physicsEngine=Engine.create();   
     GameEngine.physicsEngine.world.gravity.y=-1;
@@ -49,14 +49,12 @@ export class GameEngine{
   }
 
   private End(){
-    this.DeleteObjectAll();
+    GameEngine.DeleteObjectAll();
     this.Pause();
   }
 
   private InitScene(scene:GameScene):void{
-    this.gameScene = scene;
-    this.gameScene.gameEngine = this;
-    this.gameScene.renderer = Renderer;        
+    this.gameScene = scene;           
     document.addEventListener('mousedown',this.gameScene.OnMouseDown.bind(this.gameScene),false);
     document.addEventListener('mouseup',this.gameScene.OnMouseUp.bind(this.gameScene),false);
     document.addEventListener('mousemove',this.gameScene.OnMouseMove.bind(this.gameScene),false);
@@ -98,36 +96,43 @@ export class GameEngine{
   }
 
   private UpdateAndRenderObjects():void{    
-    this.gameObjects.forEach((el,i)=>{     
-      el.UpdatePhysics();   
+    GameEngine.gameObjects.forEach((el,i)=>{     
+      el.Update(60/1000);   
       el.Render(Renderer.context, Renderer.width, Renderer.height)});
   }
 
-  SortObjects():void{
-    this.gameObjects.sort((a,b)=>{
+  static SortObjects():void{
+    GameEngine.gameObjects.sort((a,b)=>{
       return a.sortingOrder - b.sortingOrder;
     })
-    console.log([...this.gameObjects]);
+    console.log([...GameEngine.gameObjects]);
+  }
+  static GetDefaultCollisionLayer(){
+    return 0x0001;
+  }
+  static AddCollisionLayer(){
+    return Body.nextCategory();
   }
 
-  public SpawnObject(obj:GameObject):GameObject{            
-    this.gameObjects.push(obj);
+  static SpawnObject(obj:GameObject):GameObject{            
+    GameEngine.gameObjects.push(obj);
     this.SortObjects();
     return obj;
   }
 
-  public DeleteObject(obj:GameObject):void{
-    const idx = this.gameObjects.indexOf(obj);
+  static DeleteObject(obj:GameObject):void{
+    const idx = GameEngine.gameObjects.indexOf(obj);
     if(idx==-1){      
       return;
     }    
-    this.gameObjects[idx].RemoveRigidbody();
-    this.gameObjects.splice(idx,1);
+    if(obj.rigidBody)
+      GameEngine.gameObjects[idx].RemoveRigidbody();
+    GameEngine.gameObjects.splice(idx,1);
   }
 
-  public DeleteObjectAll():void{
+  static DeleteObjectAll():void{
     Composite.clear(GameEngine.physicsEngine.world,false);
-    this.gameObjects.splice(0,this.gameObjects.length);
+    GameEngine.gameObjects.splice(0,GameEngine.gameObjects.length);
   }
 
 }
