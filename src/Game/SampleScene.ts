@@ -25,12 +25,15 @@ import Base from 'Assets/Base.png'
 import Ground from 'Assets/Ground.png'
 //@ts-ignore 
 import Spawner from 'Assets/Spawner.png'
+//@ts-ignore
+import HitVfx from 'Assets/HitVfx.png';
 import { ObjectLink } from 'Engine/Link';
 
 
 interface IEnemy{
   obj:GameObject,
-  hp:number
+  hp:number,
+  hit:boolean,
 }
 
 export default class SampleScene extends GameScene{  
@@ -50,7 +53,13 @@ export default class SampleScene extends GameScene{
   //#region enemy
   upperEnemies:Array<IEnemy> = new Array<IEnemy>();
   lowerEnemies:Array<IEnemy> = new Array<IEnemy>();
-  enemyHP:number;
+  enemyHP:number=3;
+  enemySpeed:number=.003;
+  enemySpawnInterval:number=2000;
+  life:number=10;
+  score:number=0;
+  lifeText:GameObject;
+  scoreText:GameObject
   //#endregion
   //image
   playerBandImage:HTMLImageElement;
@@ -58,6 +67,7 @@ export default class SampleScene extends GameScene{
   swordImage:HTMLImageElement;
   enemyIdleImage:HTMLImageElement;
   enemyHitImage:HTMLImageElement;
+  hitVfxImage:HTMLImageElement;
   //#region input
   moveInput:Vector2;
   isMovingLeft:boolean;
@@ -92,6 +102,8 @@ export default class SampleScene extends GameScene{
   playerDownLayer:number;
   swordLayer:number;
   enemyLayer:number;
+  
+  
 
   //audio
   sfxVolume:number=0.3;
@@ -112,6 +124,8 @@ export default class SampleScene extends GameScene{
     this.enemyIdleImage.src = EnemyIdle;
     this.enemyHitImage = new Image();
     this.enemyHitImage.src = EnemyHit;
+    this.hitVfxImage = new Image();
+    this.hitVfxImage.src=HitVfx;
   }
   StartDash(){
     if(!this.isDashing&&!this.inDashCooldown){
@@ -170,7 +184,7 @@ export default class SampleScene extends GameScene{
     this.sword = GameEngine.SpawnObject(
       new GameObject(new Vector2(80*5/6,80*5/6), new Vector2(332*5/6,78*5/6).Divide(3))
       .AttatchImage(this.swordImage)
-      .AttatchRigidbody(false,false,this.swordLayer,~this.groundLayer) 
+      .AttatchRigidbody(false,true,this.swordLayer,~this.groundLayer) 
       );
 
     this.sword.sortingOrder=1;
@@ -237,21 +251,20 @@ export default class SampleScene extends GameScene{
   }
   SpawnEnemy(spawnPoint:Vector2, flipped:boolean){
     let enemy = GameEngine.SpawnObject(
-      new GameObject(spawnPoint, new Vector2(172/2,110/2))
-      .AttatchRigidbody(false, false, this.enemyLayer, 
-        ~this.playerUpLayer&
-        ~this.playerDownLayer&
-        ~this.enemyLayer)
+      new GameObject(spawnPoint.Subtract(Vector2.up.Multiply(30)), new Vector2(172/2,110/2))
+      .AttatchRigidbody(false, false, this.enemyLayer,this.groundLayer|this.swordLayer)         
       .AttatchImage(this.enemyIdleImage)
       );
     if(flipped){
       enemy.flipX = true;
-      this.upperEnemies.push({obj:enemy,hp:this.enemyHP});
+      this.upperEnemies.push({obj:enemy,hp:this.enemyHP,hit:false});
     }else{
-      this.lowerEnemies.push({obj:enemy,hp:this.enemyHP});
+      this.lowerEnemies.push({obj:enemy,hp:this.enemyHP,hit:false});
     }
-    let repeat = ()=>this.SpawnEnemy(spawnPoint,flipped);
-    setTimeout(repeat.bind(this), 2000);
+    enemy.sortingOrder = -1;
+    
+    let repeat = ()=>this.SpawnEnemy(spawnPoint,flipped);    
+    setTimeout(repeat.bind(this), this.enemySpawnInterval);
   }
   HandlePlayerMovement(){
     this.moveInput = Vector2.zero;
@@ -280,6 +293,16 @@ export default class SampleScene extends GameScene{
     this.SpawnPlayer();
     this.SpawnSword();
     this.SpawnEnvironment();    
+    this.lifeText = GameEngine.SpawnObject(
+      new GameObject(new Vector2(0,360-30),new Vector2(300,30))
+      .AttatchText(`Life: ${this.life}`, '30px serif')
+    );
+    this.lifeText.sortingOrder=5;
+    this.scoreText = GameEngine.SpawnObject(
+      new GameObject(new Vector2(0,360-80),new Vector2(300,30))
+      .AttatchText(`Score: ${this.score}`, '30px serif')
+    );
+    this.scoreText.sortingOrder=5;
     GameEngine.SortObjects();
     
     this.swordLink =  new ObjectLink(30, .05);
@@ -287,7 +310,7 @@ export default class SampleScene extends GameScene{
     this.swordLink.bodyB = this.sword.rigidBody;
     this.swordLink.pointB = new Vector2(-40*5/6,0);
     this.SpawnEnemy(this.upperSpawner.position, true)
-    
+    this.SpawnEnemy(this.lowerSpawner.position, false);
 
     Renderer.bgcolor = '#333333';
   }
@@ -306,6 +329,9 @@ export default class SampleScene extends GameScene{
   Update(deltaTime:number){
     this.HandlePlayerMovement();
     this.swordLink.pointA = this.player.position;
+    this.lifeText.text=`Life: ${this.life}`;
+    this.scoreText.text=`Score: ${Math.floor(this.score)}`;
+    this.score+=deltaTime*3;
     if(this.isDashing){
       this.player.velocity = this.dashDir.Multiply(this.dashSpeed);
       let dashTrail = GameEngine.SpawnObject(
@@ -332,18 +358,107 @@ export default class SampleScene extends GameScene{
       swordTrail.sortingOrder=this.sword.sortingOrder;
       swordTrail.rotation=this.sword.rotation;
       this.UpdateTrail(swordTrail,deltaTime/2);
-    }
-    
+    }    
     if(this.isDashing||this.player.velocity.y > 0){
       this.player.collisionLayer = this.playerUpLayer;
     }else{
       this.player.collisionLayer = this.playerDownLayer;
     }
+
+    this.lowerEnemies.forEach((el,i)=>{
+      el.obj.AddForce(Vector2.left.Multiply(this.enemySpeed));      
+      if(el.hp<=0){
+        GameEngine.DeleteObject(el.obj);
+        this.lowerEnemies.splice(i,1);
+      }
+      el.obj.rotation=0;
+      if(el.obj.position.x < -720){
+        GameEngine.DeleteObject(el.obj);
+        this.lowerEnemies.splice(i,1);
+        this.life-=1;
+      }
+    });
+    this.upperEnemies.forEach((el,i)=>{
+      el.obj.AddForce(Vector2.right.Multiply(this.enemySpeed));      
+      if(el.hp<=0){
+        GameEngine.DeleteObject(el.obj);
+        this.upperEnemies.splice(i,1);
+      }
+      el.obj.rotation=0;
+      if(el.obj.position.x > 720){
+        GameEngine.DeleteObject(el.obj);
+        this.upperEnemies.splice(i,1);
+        this.life-=1;
+      }
+    })
     this.player.rotation = 0;
+    if(this.enemySpeed < .004)
+    this.enemySpeed+=.00001*deltaTime;
+    if(this.enemySpawnInterval > 500)
+      this.enemySpawnInterval-=10*deltaTime;
+    this.enemyHP+=.01*deltaTime; 
   }  
 
   OnCollisionEnter(event: IPair): void {    
     
+  }
+
+  HandleEnemyCol(event:IPair){
+    if(event.bodyA.id == this.sword.id&&this.isAttacking){
+      if(event.bodyB.collisionFilter.category = this.enemyLayer){
+        const lowerIdx = this.lowerEnemies.find((el)=>el.obj.id ==event.bodyB.id);
+        const upperIdx = this.upperEnemies.find((el)=>el.obj.id ==event.bodyB.id);
+        if(upperIdx){
+          if(!upperIdx.hit){
+            upperIdx.hit=true;
+            upperIdx.hp-=1;
+            upperIdx.obj.sprite=this.enemyHitImage;
+            if(this.player.flipX){
+              upperIdx.obj.velocity=new Vector2(-1,1).Normalize().Multiply(5);
+
+            }else{
+
+              upperIdx.obj.velocity=new Vector2(1,1).Normalize().Multiply(5);
+            }
+            var idleImage = this.enemyIdleImage;
+            var hitVfx = GameEngine.SpawnObject(
+              new GameObject(Vector2.Clone(upperIdx.obj.position),new Vector2(80,80))
+              .AttatchImage(this.hitVfxImage)
+            );
+            hitVfx.sortingOrder = 1;
+            GameEngine.SortObjects();
+            this.UpdateTrail(hitVfx, 15/1000);
+            setTimeout(()=>{upperIdx.hit=false, upperIdx.obj.sprite=idleImage}, 500);
+            return;
+          }
+        }
+        if(lowerIdx){  
+          if(!lowerIdx.hit){
+            lowerIdx.hit=true;
+            lowerIdx.hp-=1;
+            lowerIdx.obj.sprite=this.enemyHitImage;
+            if(this.player.flipX){
+              lowerIdx.obj.velocity=new Vector2(-1,1).Normalize().Multiply(5);              
+            }else{
+              lowerIdx.obj.velocity=new Vector2(1,1).Normalize().Multiply(5);
+            }
+            var idleImage = this.enemyIdleImage;
+            var hitVfx = GameEngine.SpawnObject(
+              new GameObject(Vector2.Clone(lowerIdx.obj.position),new Vector2(80,80))
+              .AttatchImage(this.hitVfxImage)
+            );
+            hitVfx.sortingOrder = 1;
+            GameEngine.SortObjects();
+            this.UpdateTrail(hitVfx, 15/1000);
+            setTimeout(()=>{lowerIdx.hit=false, lowerIdx.obj.sprite=idleImage}, 500);
+          }        
+        }
+      }
+    }
+  }
+
+  OnCollisionStay(event: IPair): void {
+    this.HandleEnemyCol(event);
   }
 
 
@@ -361,7 +476,7 @@ export default class SampleScene extends GameScene{
       this.isMovingDown = true;
     }
     if(event.code === 'Space'){
-      this.StartDash();
+      this.StartDash(); 
     }
     if(event.code==='KeyJ'){
       this.StartAttack();
